@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NFT保有者 投票システム</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.ethers.io/lib/ethers-5.7.umd.min.js" type="application/javascript"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
 
@@ -31,14 +32,10 @@
     min-height: 100vh;
   }
 
-  /* ── レイアウト ── */
   .app { max-width: 780px; margin: 0 auto; padding: 24px 16px 60px; }
 
-  /* ── ヘッダー ── */
-  .header {
-    text-align: center;
-    padding: 40px 0 32px;
-  }
+  /* ヘッダー */
+  .header { text-align: center; padding: 40px 0 32px; }
   .header .logo {
     width: 56px; height: 56px;
     background: linear-gradient(135deg, var(--accent), var(--accent2));
@@ -49,7 +46,7 @@
   .header h1 { font-size: 1.7rem; font-weight: 700; letter-spacing: -0.5px; }
   .header p  { color: var(--text-sub); margin-top: 6px; font-size: 0.9rem; }
 
-  /* ── カード ── */
+  /* カード */
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -63,7 +60,7 @@
     color: var(--text-sub); margin-bottom: 14px;
   }
 
-  /* ── ウォレット接続 ── */
+  /* ウォレット接続 */
   .wallet-section { text-align: center; }
   .connect-btn {
     background: linear-gradient(135deg, var(--accent), #5b8af5);
@@ -80,9 +77,7 @@
     display: flex; align-items: center; justify-content: space-between;
     flex-wrap: wrap; gap: 10px;
   }
-  .wallet-addr {
-    display: flex; align-items: center; gap: 10px;
-  }
+  .wallet-addr { display: flex; align-items: center; gap: 10px; }
   .wallet-dot {
     width: 10px; height: 10px; border-radius: 50%;
     background: var(--success); animation: pulse 2s infinite;
@@ -105,14 +100,13 @@
   }
   .disconnect-btn:hover { background: rgba(255,255,255,.08); }
 
-  /* ── 投票セクション ── */
+  /* 投票セクション */
   .vote-meta { margin-bottom: 18px; }
   .vote-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 6px; }
   .vote-desc  { color: var(--text-sub); font-size: 0.875rem; line-height: 1.6; }
   .vote-timer {
     display: flex; align-items: center; gap: 8px;
-    font-size: 0.8rem; color: var(--warn);
-    margin-top: 10px;
+    font-size: 0.8rem; color: var(--warn); margin-top: 10px;
   }
 
   .options-grid { display: flex; flex-direction: column; gap: 10px; margin: 18px 0; }
@@ -142,7 +136,6 @@
   .vote-btn:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); }
   .vote-btn:disabled { opacity: .35; cursor: not-allowed; transform: none; }
 
-  /* ── 投票済み表示 ── */
   .voted-badge {
     display: flex; align-items: center; gap: 10px;
     background: rgba(76,175,130,.12); border: 1px solid rgba(76,175,130,.3);
@@ -151,7 +144,7 @@
     margin-top: 12px;
   }
 
-  /* ── グラフ ── */
+  /* グラフ・結果 */
   .chart-wrap { position: relative; height: 260px; margin-bottom: 20px; }
   .results-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
   .results-table th {
@@ -165,9 +158,7 @@
   .bar-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
   .pct { font-size: 0.8rem; color: var(--text-sub); min-width: 38px; text-align: right; }
 
-  .stat-row {
-    display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
-  }
+  .stat-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
   .stat-box {
     flex: 1; min-width: 120px;
     background: var(--surface2); border-radius: 10px;
@@ -176,17 +167,7 @@
   .stat-num { font-size: 1.4rem; font-weight: 700; }
   .stat-lbl { font-size: 0.72rem; color: var(--text-sub); margin-top: 2px; }
 
-  /* ── 投票履歴タブ ── */
-  .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
-  .tab-btn {
-    background: var(--surface2); border: 1px solid var(--border);
-    color: var(--text-sub); border-radius: 8px;
-    padding: 7px 16px; font-size: 0.82rem; cursor: pointer;
-    transition: background .2s, color .2s;
-  }
-  .tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-
-  /* ── 投票ログ ── */
+  /* 投票ログ */
   .log-list { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; }
   .log-item {
     background: var(--surface2); border-radius: 8px;
@@ -198,27 +179,28 @@
   .log-weight { color: var(--warn); }
   .log-time   { color: var(--text-sub); font-size: 0.72rem; }
 
-  /* ── 投票選択ドロップダウン ── */
+  /* ドロップダウン */
   .vote-select-wrap { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
   .vote-select {
     background: var(--surface2); border: 1px solid var(--border);
     color: var(--text); border-radius: 8px; padding: 8px 12px;
-    font-size: 0.85rem; flex: 1; min-width: 180px;
+    font-size: 0.85rem; flex: 1; min-width: 180px; cursor: pointer;
   }
   .vote-select option { background: var(--surface2); }
 
-  /* ── アラート ── */
+  /* アラート */
   .alert {
     border-radius: 10px; padding: 12px 16px;
-    font-size: 0.85rem; margin: 10px 0;
+    font-size: 0.85rem; margin: 10px 0; line-height: 1.6;
     display: flex; align-items: flex-start; gap: 10px;
   }
+  .alert a { color: inherit; }
   .alert-info    { background: rgba(91,138,245,.12); border: 1px solid rgba(91,138,245,.3); color: #8ab4f8; }
   .alert-success { background: rgba(76,175,130,.12); border: 1px solid rgba(76,175,130,.3); color: var(--success); }
   .alert-error   { background: rgba(240,98,146,.12); border: 1px solid rgba(240,98,146,.3); color: var(--error); }
   .alert-warn    { background: rgba(255,183,77,.12);  border: 1px solid rgba(255,183,77,.3);  color: var(--warn); }
 
-  /* ── ローディング ── */
+  /* スピナー */
   .spinner {
     display: inline-block; width: 18px; height: 18px;
     border: 2px solid rgba(255,255,255,.2);
@@ -227,13 +209,11 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* ── フッター ── */
+  /* フッター */
   .footer { text-align: center; color: var(--text-sub); font-size: 0.75rem; margin-top: 40px; }
 
-  /* ── hidden ── */
   .hidden { display: none !important; }
 
-  /* ── レスポンシブ ── */
   @media (max-width: 520px) {
     .header h1 { font-size: 1.3rem; }
     .stat-box   { min-width: 90px; }
@@ -280,18 +260,15 @@
     </div>
   </div>
 
-  <!-- ③ 結果グラフ -->
+  <!-- ③ 投票結果グラフ -->
   <div class="card" id="resultsCard">
     <div class="card-title">📊 投票結果</div>
-
-    <!-- 投票回選択 -->
     <div class="vote-select-wrap">
       <label style="font-size:.82rem;color:var(--text-sub);">表示する投票：</label>
       <select class="vote-select" id="resultVoteSelect" onchange="loadResults(this.value)">
         <option value="">読み込み中...</option>
       </select>
     </div>
-
     <div id="resultsContent">
       <div class="alert alert-info">⏳ 結果を読み込み中...</div>
     </div>
@@ -310,7 +287,7 @@
 
 <script>
 // ============================================================
-//  ★★ 設定：Apps Script Web App の URL に書き換えてください ★★
+// Apps Script Web App URL（変更不要）
 // ============================================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbxK_BRGerGBWpf_e25e-qr3h4BQVGUlUx50a-2ArHoNnWYBnONoF-CSvYwdXJ-JeTCGgg/exec';
 
@@ -320,6 +297,7 @@ let currentVoteId = null;
 let eligibility   = null;
 let allVotes      = [];
 let chartInstance = null;
+let selectedOption = null;
 
 const COLORS = [
   '#7c6ff7','#5ee7df','#f9a825','#f06292',
@@ -335,7 +313,7 @@ async function connectWallet() {
   alertEl.innerHTML = '';
 
   if (!window.ethereum) {
-    alertEl.innerHTML = `<div class="alert alert-error">⚠️ MetaMaskが見つかりません。<a href="https://metamask.io" target="_blank" style="color:inherit">インストール</a>してください。</div>`;
+    alertEl.innerHTML = `<div class="alert alert-error">⚠️ MetaMaskが見つかりません。<a href="https://metamask.io" target="_blank">インストール</a>してください。</div>`;
     return;
   }
 
@@ -347,7 +325,6 @@ async function connectWallet() {
     currentWallet = accounts[0].toLowerCase();
     showWalletConnected();
     await loadActiveVote();
-    loadAllVotes();
   } catch (err) {
     alertEl.innerHTML = `<div class="alert alert-error">❌ 接続キャンセルまたはエラー：${err.message}</div>`;
     btn.disabled = false;
@@ -366,6 +343,7 @@ function disconnectWallet() {
   currentWallet = null;
   eligibility   = null;
   currentVoteId = null;
+  selectedOption = null;
   document.getElementById('connectSection').classList.remove('hidden');
   document.getElementById('walletInfo').classList.add('hidden');
   document.getElementById('nftBadge').textContent = '🎴 - NFT';
@@ -375,7 +353,6 @@ function disconnectWallet() {
   document.getElementById('voteCard').classList.add('hidden');
 }
 
-// ウォレット変更を検知
 if (window.ethereum) {
   window.ethereum.on('accountsChanged', (accounts) => {
     if (accounts.length === 0) disconnectWallet();
@@ -403,13 +380,10 @@ async function loadActiveVote() {
 
     currentVoteId = res.voteId;
 
-    // 資格確認
-    const elig = await apiFetch(`${API_URL}?action=checkEligibility&voteId=${res.voteId}&wallet=${currentWallet}`);
+    const elig = await apiFetch(`${API_URL}?action=checkEligibility&voteId=${encodeURIComponent(res.voteId)}&wallet=${currentWallet}`);
     eligibility = elig;
 
-    document.getElementById('nftBadge').textContent = elig.eligible
-      ? `🎴 ${elig.nftCount} NFT`
-      : `🎴 対象外`;
+    document.getElementById('nftBadge').textContent = elig.eligible ? `🎴 ${elig.nftCount} NFT` : `🎴 対象外`;
 
     renderVoteUI(res, elig);
 
@@ -424,15 +398,13 @@ function renderVoteUI(vote, elig) {
   const diff  = endAt - now;
   const days  = Math.floor(diff / 86400000);
   const hours = Math.floor((diff % 86400000) / 3600000);
-  const timerText = diff > 0
-    ? `残り ${days}日 ${hours}時間`
-    : '投票期間終了';
+  const timerText = diff > 0 ? `残り ${days}日 ${hours}時間` : '投票期間終了';
 
   let html = `
     <div class="vote-meta">
       <div class="vote-title">${escHtml(vote.title)}</div>
       <div class="vote-desc">${escHtml(vote.desc)}</div>
-      <div class="vote-timer">🕐 ${timerText} （${fmtDate(vote.endAt)} まで）</div>
+      <div class="vote-timer">🕐 ${timerText}（${fmtDate(vote.endAt)} まで）</div>
     </div>
   `;
 
@@ -449,7 +421,7 @@ function renderVoteUI(vote, elig) {
       html += `<button class="option-btn" onclick="selectOption(this,'${escHtml(opt)}')">${escHtml(opt)}</button>`;
     });
     html += `</div>
-      <button class="vote-btn" id="voteSubmitBtn" onclick="submitVote('${vote.voteId}')" disabled>
+      <button class="vote-btn" id="voteSubmitBtn" onclick="submitVote('${escHtml(vote.voteId)}')" disabled>
         🗳️ この選択で投票する
       </button>
       <div id="voteAlert"></div>
@@ -458,8 +430,6 @@ function renderVoteUI(vote, elig) {
 
   document.getElementById('voteContent').innerHTML = html;
 }
-
-let selectedOption = null;
 
 function selectOption(el, opt) {
   document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
@@ -475,30 +445,54 @@ function selectOption(el, opt) {
 async function submitVote(voteId) {
   if (!selectedOption) return;
 
-  const submitBtn  = document.getElementById('voteSubmitBtn');
-  const alertEl    = document.getElementById('voteAlert');
+  const submitBtn = document.getElementById('voteSubmitBtn');
+  const alertEl   = document.getElementById('voteAlert');
   alertEl.innerHTML = '';
 
-  // MetaMaskで署名
   submitBtn.disabled = true;
-  submitBtn.innerHTML = `<span class="spinner"></span> MetaMaskで署名してください...`;
 
   try {
-    const message   = `NFT投票システム\nVoteID: ${voteId}\n選択: ${selectedOption}\nウォレット: ${currentWallet}\nタイムスタンプ: ${new Date().toISOString()}`;
+    // ① サーバーからノンスを取得（10分の有効期限）
+    submitBtn.innerHTML = `<span class="spinner"></span> サーバーと通信中...`;
+    const nonceRes = await apiFetch(
+      `${API_URL}?action=getNonce&voteId=${encodeURIComponent(voteId)}&wallet=${currentWallet}&choice=${encodeURIComponent(selectedOption)}`
+    );
+    if (nonceRes.error) throw new Error(nonceRes.error);
+    const nonce = nonceRes.nonce;
+
+    // ② MetaMaskで署名するメッセージを構築（ノンス入り）
+    const message = [
+      `NFT投票システム`,
+      `VoteID: ${voteId}`,
+      `選択: ${selectedOption}`,
+      `ウォレット: ${currentWallet}`,
+      `ノンス: ${nonce}`,
+      `タイムスタンプ: ${new Date().toISOString()}`
+    ].join('\n');
+
+    // ③ ethers.js でハッシュを計算（サーバー側の ecrecover と同一の値）
+    const msgHash = ethers.utils.hashMessage(message);
+
+    // ④ MetaMaskで署名
+    submitBtn.innerHTML = `<span class="spinner"></span> MetaMaskで署名してください...`;
     const signature = await window.ethereum.request({
       method: 'personal_sign',
       params : [message, currentWallet]
     });
 
+    // ⑤ サーバーに送信（nonce + msgHash + signature）
     submitBtn.innerHTML = `<span class="spinner"></span> 送信中...`;
-
-    const res = await apiPost({ action: 'submitVote', voteId, wallet: currentWallet, choice: selectedOption, signature, message });
+    const res = await apiPost({
+      action: 'submitVote',
+      voteId, wallet: currentWallet,
+      choice: selectedOption,
+      signature, msgHash, nonce
+    });
 
     if (res.success) {
       alertEl.innerHTML = `<div class="alert alert-success">✅ 投票が完了しました！（NFT重み: ${res.nftWeight}票）</div>`;
       submitBtn.classList.add('hidden');
       document.querySelectorAll('.option-btn').forEach(b => { b.disabled = true; });
-      // 結果を即更新
       setTimeout(() => { loadResults(voteId); loadVoteLog(voteId); }, 800);
     } else {
       throw new Error(res.error || '投票に失敗しました');
@@ -515,35 +509,50 @@ async function submitVote(voteId) {
 }
 
 // ============================================================
-// 全投票一覧を読み込み & ドロップダウン構築
+// 全投票一覧を読み込み
 // ============================================================
 async function loadAllVotes() {
+  const sel = document.getElementById('resultVoteSelect');
+  const resultsContent = document.getElementById('resultsContent');
+
   try {
     const res = await apiFetch(`${API_URL}?action=getAllVotes`);
+
+    if (res.error) {
+      sel.innerHTML = '<option>エラー</option>';
+      resultsContent.innerHTML = `<div class="alert alert-error">❌ APIエラー：${escHtml(res.error)}</div>`;
+      return;
+    }
+
     allVotes = res.votes || [];
 
-    const sel = document.getElementById('resultVoteSelect');
     if (allVotes.length === 0) {
       sel.innerHTML = '<option>投票データなし</option>';
+      resultsContent.innerHTML = `<div class="alert alert-warn">📭 投票データが見つかりません。スプレッドシートの「設定」タブを確認してください。<br><a href="${API_URL}?action=getAllVotes" target="_blank">🔗 APIを直接確認する</a></div>`;
       return;
     }
 
     sel.innerHTML = allVotes.map(v =>
-      `<option value="${escHtml(v.voteId)}">${escHtml(v.voteId)} — ${escHtml(v.title)} [${v.status}]</option>`
+      `<option value="${escHtml(v.voteId)}">${escHtml(v.voteId)} — ${escHtml(v.title)} [${escHtml(v.status)}]</option>`
     ).join('');
 
-    // アクティブな投票をデフォルト選択
     const active = allVotes.find(v => v.status === 'active');
     const first  = active || allVotes[allVotes.length - 1];
-    if (first) { sel.value = first.voteId; loadResults(first.voteId); loadVoteLog(first.voteId); }
+    if (first) {
+      sel.value = first.voteId;
+      loadResults(first.voteId);
+      loadVoteLog(first.voteId);
+    }
 
   } catch (e) {
     console.error('投票一覧取得エラー', e);
+    sel.innerHTML = '<option>通信エラー</option>';
+    resultsContent.innerHTML = `<div class="alert alert-error">❌ 通信エラー：${escHtml(e.message)}<br><a href="${API_URL}?action=getAllVotes" target="_blank">🔗 APIを直接確認する</a></div>`;
   }
 }
 
 // ============================================================
-// 結果を表示
+// 投票結果を表示
 // ============================================================
 async function loadResults(voteId) {
   if (!voteId) return;
@@ -551,33 +560,31 @@ async function loadResults(voteId) {
   content.innerHTML = `<div class="alert alert-info">⏳ 結果を集計中...</div>`;
 
   try {
-    const res = await apiFetch(`${API_URL}?action=getResults&voteId=${voteId}`);
+    const res = await apiFetch(`${API_URL}?action=getResults&voteId=${encodeURIComponent(voteId)}`);
     if (res.error) throw new Error(res.error);
 
     const totalW = res.totalWeight || 0;
 
-    // 統計ボックス
     let html = `
       <div class="stat-row">
         <div class="stat-box"><div class="stat-num">${res.totalVoters}</div><div class="stat-lbl">投票者数</div></div>
         <div class="stat-box"><div class="stat-num">${totalW}</div><div class="stat-lbl">総票数（NFT重み）</div></div>
-        <div class="stat-box"><div class="stat-num">${res.participationRate}%</div><div class="stat-lbl">投票率（NFT重み）</div></div>
+        <div class="stat-box"><div class="stat-num">${res.participationRate}%</div><div class="stat-lbl">投票率</div></div>
         <div class="stat-box"><div class="stat-num">${res.totalEligibleVoters}</div><div class="stat-lbl">対象ウォレット数</div></div>
       </div>
+      <div class="chart-wrap"><canvas id="resultChart"></canvas></div>
+      <table class="results-table">
+        <thead><tr><th>選択肢</th><th>票数（NFT重み）</th><th>割合</th><th>バー</th></tr></thead>
+        <tbody>
     `;
 
-    // グラフ
-    html += `<div class="chart-wrap"><canvas id="resultChart"></canvas></div>`;
-
-    // テーブル
-    html += `<table class="results-table"><thead><tr><th>選択肢</th><th>票数（NFT）</th><th>割合</th><th>内訳</th></tr></thead><tbody>`;
     res.options.forEach((opt, i) => {
       const t   = res.tally[opt] || { weight: 0, count: 0 };
       const pct = totalW > 0 ? ((t.weight / totalW) * 100).toFixed(1) : '0.0';
       html += `
         <tr>
           <td><strong>${escHtml(opt)}</strong></td>
-          <td>${t.weight}票</td>
+          <td>${t.weight}票（${t.count}人）</td>
           <td class="pct">${pct}%</td>
           <td><div class="bar-wrap">
             <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${COLORS[i % COLORS.length]}"></div></div>
@@ -585,15 +592,11 @@ async function loadResults(voteId) {
         </tr>
       `;
     });
-    html += `</tbody></table>`;
 
+    html += `</tbody></table>`;
     content.innerHTML = html;
 
-    // Chart.js 描画
     renderChart(res.options, res.tally, totalW);
-
-    // ログも更新
-    loadVoteLog(voteId);
 
   } catch (e) {
     content.innerHTML = `<div class="alert alert-error">❌ 結果取得エラー：${e.message}</div>`;
@@ -628,13 +631,10 @@ function renderChart(options, tally, totalW) {
       responsive: true, maintainAspectRatio: false,
       cutout: '62%',
       plugins: {
-        legend: {
-          position: 'right',
-          labels: { color: '#e8eaf6', font: { size: 12 }, padding: 14 }
-        },
+        legend: { position: 'right', labels: { color: '#e8eaf6', font: { size: 12 }, padding: 14 } },
         tooltip: {
           callbacks: {
-            label: ctx => ` ${ctx.parsed} NFT票 (${(ctx.parsed/totalW*100).toFixed(1)}%)`
+            label: ctx => ` ${ctx.parsed} NFT票 (${totalW > 0 ? (ctx.parsed/totalW*100).toFixed(1) : 0}%)`
           }
         }
       }
@@ -650,7 +650,7 @@ async function loadVoteLog(voteId) {
   const content = document.getElementById('logContent');
 
   try {
-    const res = await apiFetch(`${API_URL}?action=getVoteLog&voteId=${voteId}`);
+    const res = await apiFetch(`${API_URL}?action=getVoteLog&voteId=${encodeURIComponent(voteId)}`);
     if (!res.logs || res.logs.length === 0) {
       content.innerHTML = `<div class="alert alert-info">📋 まだ投票ログはありません</div>`;
       return;
@@ -669,8 +669,8 @@ async function loadVoteLog(voteId) {
       `;
     });
     html += `</div>`;
-
     content.innerHTML = html;
+
   } catch (e) {
     content.innerHTML = `<div class="alert alert-error">❌ ${e.message}</div>`;
   }
@@ -707,7 +707,7 @@ function escHtml(s) {
 }
 
 // ============================================================
-// 初期ロード（リザルトのみ接続不要で表示）
+// 初期ロード
 // ============================================================
 window.addEventListener('DOMContentLoaded', () => {
   loadAllVotes();

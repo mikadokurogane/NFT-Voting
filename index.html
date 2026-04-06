@@ -224,7 +224,13 @@ async function submitVote(voteId){
     const nonce=nonceRes.nonce;
 
     // ② メッセージ構築
-    const message=[`NFT投票システム`,`VoteID: ${voteId}`,`選択: ${selectedOption}`,`ウォレット: ${currentWallet}`,`ノンス: ${nonce}`,`タイムスタンプ: ${new Date().toISOString()}`].join('\n');
+    const message = [
+  `NFT投票システム`,
+  `VoteID: ${voteId}`,
+  `選択: ${selectedOption}`,
+  `ウォレット: ${currentWallet}`,
+  `ノンス: ${nonce}`
+].join('\n');
 
     // ③ MetaMaskで署名（ethers.js不要）
     submitBtn.innerHTML=`<span class="spinner"></span> MetaMaskで署名してください...`;

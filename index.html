@@ -1,6 +1,7 @@
 <div class="nftv-app">
+
 <style>
-.nftv-app {
+.nftv-app{
   --bg:#0d0f1a;
   --surface:#161829;
   --surface2:#1e2138;
@@ -17,78 +18,83 @@
   background:var(--bg);
   color:var(--text);
   padding:24px 16px 60px;
-  border-radius:12px;
   max-width:780px;
   margin:auto;
+  border-radius:12px;
 }
 
-.nftv-app *{box-sizing:border-box;}
+.nftv-app *{box-sizing:border-box;margin:0;padding:0;}
 
-.nftv-header{text-align:center;padding:20px 0;}
-.nftv-logo{
+.nftv-app .header{text-align:center;padding:40px 0 32px;}
+.nftv-app .logo{
   width:56px;height:56px;border-radius:16px;
   background:linear-gradient(135deg,var(--accent),var(--accent2));
   display:flex;align-items:center;justify-content:center;
-  font-size:28px;margin:0 auto 10px;
+  font-size:28px;margin:0 auto 16px;
 }
 
-.nftv-card{
+.nftv-app .card{
   background:var(--surface);
   border:1px solid var(--border);
   border-radius:16px;
-  padding:20px;
-  margin-bottom:16px;
+  padding:24px;
+  margin-bottom:20px;
 }
 
-.nftv-btn{
+.nftv-app .card-title{
+  font-size:.75rem;color:var(--text-sub);
+  margin-bottom:14px;
+}
+
+.nftv-app .connect-btn,
+.nftv-app .vote-btn{
+  width:100%;
   background:linear-gradient(135deg,var(--accent),#5b8af5);
-  border:none;color:#fff;
-  border-radius:10px;
-  padding:12px 20px;
-  cursor:pointer;
+  color:#fff;border:none;border-radius:12px;
+  padding:14px;font-weight:bold;cursor:pointer;
 }
 
-.nftv-option{
+.nftv-app .option-btn{
   background:var(--surface2);
   border:1px solid var(--border);
-  padding:12px;border-radius:10px;
-  margin-bottom:8px;
-  cursor:pointer;
+  padding:14px;border-radius:12px;
+  margin-bottom:10px;cursor:pointer;
 }
 
-.nftv-option.selected{
+.nftv-app .option-btn.selected{
   border-color:var(--accent);
   background:rgba(124,111,247,.2);
 }
 
 .nftv-hidden{display:none;}
 
-.nftv-alert{padding:10px;border-radius:8px;margin-top:10px;}
-.nftv-info{background:rgba(91,138,245,.12);}
-.nftv-error{background:rgba(240,98,146,.12);}
-.nftv-success{background:rgba(76,175,130,.12);}
+.nftv-app .alert{
+  padding:12px;border-radius:10px;margin-top:10px;
+}
+.nftv-app .alert-info{background:rgba(91,138,245,.12);}
+.nftv-app .alert-success{background:rgba(76,175,130,.12);}
+.nftv-app .alert-error{background:rgba(240,98,146,.12);}
 </style>
 
-<div class="nftv-header">
-  <div class="nftv-logo">🗳️</div>
-  <h2>NFT Voting</h2>
+<div class="header">
+  <div class="logo">🗳️</div>
+  <h2>NFT Snapshot Voting</h2>
 </div>
 
-<div class="nftv-card">
-  <button class="nftv-btn" onclick="nftv_connect()">ウォレット接続</button>
-  <div id="nftv-wallet"></div>
+<div class="card">
+  <div class="card-title">ウォレット接続</div>
+  <button class="connect-btn" onclick="connectWallet()">接続</button>
+  <div id="wallet"></div>
 </div>
 
-<div class="nftv-card nftv-hidden" id="nftv-vote">
-  <h3 id="nftv-title"></h3>
-  <div id="nftv-options"></div>
-  <button class="nftv-btn" id="nftv-submit" disabled onclick="nftv_vote()">投票</button>
-  <div id="nftv-msg"></div>
+<div class="card nftv-hidden" id="voteCard">
+  <div class="card-title">投票</div>
+  <div id="voteContent"></div>
 </div>
 
-<div class="nftv-card">
-  <h3>📊 結果</h3>
-  <canvas id="nftv-chart" height="200"></canvas>
+<div class="card">
+  <div class="card-title">結果</div>
+  <canvas id="chart"></canvas>
 </div>
 
 </div>
@@ -101,11 +107,11 @@ const API="https://script.google.com/macros/s/AKfycbxK_BRGerGBWpf_e25e-qr3h4BQVG
 
 let wallet=null,voteId=null,selected=null,chart=null;
 
-async function nftv_connect(){
+async function connectWallet(){
  if(!window.ethereum){alert("MetaMask必要");return;}
  const acc=await ethereum.request({method:"eth_requestAccounts"});
  wallet=acc[0];
- document.getElementById("nftv-wallet").innerText=wallet.slice(0,6)+"...";
+ document.getElementById("wallet").innerText=wallet;
  loadVote();
 }
 
@@ -114,47 +120,38 @@ async function loadVote(){
  if(!v.voteId)return;
 
  voteId=v.voteId;
- document.getElementById("nftv-vote").classList.remove("nftv-hidden");
- document.getElementById("nftv-title").innerText=v.title;
+ document.getElementById("voteCard").classList.remove("nftv-hidden");
 
- const box=document.getElementById("nftv-options");
- box.innerHTML="";
+ let html="<h3>"+v.title+"</h3>";
 
  v.options.forEach(o=>{
-  const d=document.createElement("div");
-  d.className="nftv-option";
-  d.innerText=o;
-  d.onclick=()=>{
-    document.querySelectorAll(".nftv-option").forEach(e=>e.classList.remove("selected"));
-    d.classList.add("selected");
-    selected=o;
-    document.getElementById("nftv-submit").disabled=false;
-  };
-  box.appendChild(d);
+  html+=`<div class="option-btn" onclick="selectOpt(this,'${o}')">${o}</div>`;
  });
 
+ html+=`<button class="vote-btn" onclick="vote()">投票</button>`;
+
+ document.getElementById("voteContent").innerHTML=html;
  loadResults();
 }
 
-async function nftv_vote(){
- if(!selected)return;
+function selectOpt(el,o){
+ document.querySelectorAll(".option-btn").forEach(e=>e.classList.remove("selected"));
+ el.classList.add("selected");
+ selected=o;
+}
 
+async function vote(){
  const sig=await ethereum.request({
   method:"personal_sign",
   params:["Vote:"+selected,wallet]
  });
 
- const r=await fetch(API,{
+ await fetch(API,{
   method:"POST",
   body:JSON.stringify({action:"submitVote",voteId,wallet,choice:selected,signature:sig})
- }).then(r=>r.json());
+ });
 
- if(r.success){
-  msg("投票完了","success");
-  loadResults();
- }else{
-  msg("失敗:"+r.error,"error");
- }
+ loadResults();
 }
 
 async function loadResults(){
@@ -165,17 +162,9 @@ async function loadResults(){
 
  if(chart)chart.destroy();
 
- chart=new Chart(document.getElementById("nftv-chart"),{
+ chart=new Chart(document.getElementById("chart"),{
   type:"doughnut",
-  data:{
-    labels:r.options,
-    datasets:[{data}]
-  }
+  data:{labels:r.options,datasets:[{data}]}
  });
-}
-
-function msg(t,type){
- document.getElementById("nftv-msg").innerHTML=
- `<div class="nftv-alert nftv-${type}">${t}</div>`;
 }
 </script>

@@ -1,717 +1,168 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NFT保有者 投票システム</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.ethers.io/lib/ethers-5.7.umd.min.js" type="application/javascript"></script>
+<div class="nftv-app">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+.nftv-app {
+  --bg: #0d0f1a;
+  --surface: #161829;
+  --surface2: #1e2138;
+  --border: rgba(255,255,255,0.08);
+  --accent: #7c6ff7;
+  --accent2: #5ee7df;
+  --text: #e8eaf6;
+  --text-sub: #8891bb;
+  --success: #4caf82;
+  --error: #f06292;
+  --warn: #ffb74d;
 
-  :root {
-    --bg: #0d0f1a;
-    --surface: #161829;
-    --surface2: #1e2138;
-    --border: rgba(255,255,255,0.08);
-    --accent: #7c6ff7;
-    --accent2: #5ee7df;
-    --text: #e8eaf6;
-    --text-sub: #8891bb;
-    --success: #4caf82;
-    --error: #f06292;
-    --warn: #ffb74d;
-  }
+  font-family: 'Inter','Noto Sans JP',sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  padding: 24px 16px 60px;
+  border-radius: 12px;
+}
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+.nftv-app * {
+  box-sizing: border-box;
+}
 
-  body {
-    font-family: 'Inter', 'Noto Sans JP', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-  }
+.nftv-app .nftv-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
 
-  .app { max-width: 780px; margin: 0 auto; padding: 24px 16px 60px; }
+.nftv-app .nftv-btn {
+  background: linear-gradient(135deg, var(--accent), #5b8af5);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 20px;
+  cursor: pointer;
+  font-weight: bold;
+}
 
-  /* ヘッダー */
-  .header { text-align: center; padding: 40px 0 32px; }
-  .header .logo {
-    width: 56px; height: 56px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    border-radius: 16px;
-    display: inline-flex; align-items: center; justify-content: center;
-    font-size: 28px; margin-bottom: 16px;
-  }
-  .header h1 { font-size: 1.7rem; font-weight: 700; letter-spacing: -0.5px; }
-  .header p  { color: var(--text-sub); margin-top: 6px; font-size: 0.9rem; }
+.nftv-app .nftv-btn:disabled {
+  opacity: .4;
+}
 
-  /* カード */
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 24px;
-    margin-bottom: 20px;
-  }
-  .card-title {
-    font-size: 0.75rem; font-weight: 600;
-    text-transform: uppercase; letter-spacing: 1px;
-    color: var(--text-sub); margin-bottom: 14px;
-  }
+.nftv-app .nftv-option {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
 
-  /* ウォレット接続 */
-  .wallet-section { text-align: center; }
-  .connect-btn {
-    background: linear-gradient(135deg, var(--accent), #5b8af5);
-    color: #fff; border: none; border-radius: 12px;
-    padding: 14px 32px; font-size: 1rem; font-weight: 600;
-    cursor: pointer; transition: opacity .2s, transform .1s;
-    display: inline-flex; align-items: center; gap: 10px;
-  }
-  .connect-btn:hover { opacity: .88; transform: translateY(-1px); }
-  .connect-btn:active { transform: translateY(0); }
-  .connect-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+.nftv-app .nftv-option.selected {
+  border-color: var(--accent);
+  background: rgba(124,111,247,.2);
+}
 
-  .wallet-info {
-    display: flex; align-items: center; justify-content: space-between;
-    flex-wrap: wrap; gap: 10px;
-  }
-  .wallet-addr { display: flex; align-items: center; gap: 10px; }
-  .wallet-dot {
-    width: 10px; height: 10px; border-radius: 50%;
-    background: var(--success); animation: pulse 2s infinite;
-  }
-  @keyframes pulse {
-    0%,100% { box-shadow: 0 0 0 0 rgba(76,175,130,.4); }
-    50%      { box-shadow: 0 0 0 6px rgba(76,175,130,0); }
-  }
-  .addr-text { font-family: monospace; font-size: 0.85rem; color: var(--text-sub); }
-  .nft-badge {
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    color: #fff; border-radius: 8px; padding: 4px 12px;
-    font-size: 0.8rem; font-weight: 600;
-  }
-  .disconnect-btn {
-    background: var(--surface2); border: 1px solid var(--border);
-    color: var(--text-sub); border-radius: 8px;
-    padding: 6px 12px; font-size: 0.8rem; cursor: pointer;
-    transition: background .2s;
-  }
-  .disconnect-btn:hover { background: rgba(255,255,255,.08); }
+.nftv-app .nftv-alert {
+  padding: 10px;
+  border-radius: 8px;
+  margin-top: 10px;
+  font-size: 0.9rem;
+}
 
-  /* 投票セクション */
-  .vote-meta { margin-bottom: 18px; }
-  .vote-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 6px; }
-  .vote-desc  { color: var(--text-sub); font-size: 0.875rem; line-height: 1.6; }
-  .vote-timer {
-    display: flex; align-items: center; gap: 8px;
-    font-size: 0.8rem; color: var(--warn); margin-top: 10px;
-  }
+.nftv-app .info { background: rgba(91,138,245,.12); }
+.nftv-app .error { background: rgba(240,98,146,.12); }
+.nftv-app .success { background: rgba(76,175,130,.12); }
 
-  .options-grid { display: flex; flex-direction: column; gap: 10px; margin: 18px 0; }
-  .option-btn {
-    background: var(--surface2); border: 1.5px solid var(--border);
-    color: var(--text); border-radius: 12px;
-    padding: 14px 18px; font-size: 0.95rem; font-weight: 500;
-    cursor: pointer; text-align: left;
-    transition: border-color .2s, background .2s, transform .1s;
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .option-btn:hover  { border-color: var(--accent); background: rgba(124,111,247,.08); }
-  .option-btn.selected {
-    border-color: var(--accent);
-    background: rgba(124,111,247,.18);
-    color: #fff;
-  }
-  .option-btn.selected::after { content: '✓'; color: var(--accent); font-weight: 700; }
-
-  .vote-btn {
-    width: 100%; background: linear-gradient(135deg, var(--accent), #5b8af5);
-    color: #fff; border: none; border-radius: 12px;
-    padding: 15px; font-size: 1rem; font-weight: 700;
-    cursor: pointer; margin-top: 8px;
-    transition: opacity .2s, transform .1s;
-  }
-  .vote-btn:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); }
-  .vote-btn:disabled { opacity: .35; cursor: not-allowed; transform: none; }
-
-  .voted-badge {
-    display: flex; align-items: center; gap: 10px;
-    background: rgba(76,175,130,.12); border: 1px solid rgba(76,175,130,.3);
-    border-radius: 10px; padding: 12px 16px;
-    color: var(--success); font-weight: 600; font-size: 0.9rem;
-    margin-top: 12px;
-  }
-
-  /* グラフ・結果 */
-  .chart-wrap { position: relative; height: 260px; margin-bottom: 20px; }
-  .results-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-  .results-table th {
-    text-align: left; padding: 8px 12px;
-    color: var(--text-sub); border-bottom: 1px solid var(--border);
-    font-weight: 500;
-  }
-  .results-table td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.04); }
-  .bar-wrap { display: flex; align-items: center; gap: 8px; }
-  .bar-bg { flex: 1; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
-  .bar-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
-  .pct { font-size: 0.8rem; color: var(--text-sub); min-width: 38px; text-align: right; }
-
-  .stat-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-  .stat-box {
-    flex: 1; min-width: 120px;
-    background: var(--surface2); border-radius: 10px;
-    padding: 12px 16px; text-align: center;
-  }
-  .stat-num { font-size: 1.4rem; font-weight: 700; }
-  .stat-lbl { font-size: 0.72rem; color: var(--text-sub); margin-top: 2px; }
-
-  /* 投票ログ */
-  .log-list { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; }
-  .log-item {
-    background: var(--surface2); border-radius: 8px;
-    padding: 10px 14px; font-size: 0.8rem;
-    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
-  }
-  .log-wallet { font-family: monospace; color: var(--text-sub); flex: 1; }
-  .log-choice { font-weight: 600; color: var(--accent2); }
-  .log-weight { color: var(--warn); }
-  .log-time   { color: var(--text-sub); font-size: 0.72rem; }
-
-  /* ドロップダウン */
-  .vote-select-wrap { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
-  .vote-select {
-    background: var(--surface2); border: 1px solid var(--border);
-    color: var(--text); border-radius: 8px; padding: 8px 12px;
-    font-size: 0.85rem; flex: 1; min-width: 180px; cursor: pointer;
-  }
-  .vote-select option { background: var(--surface2); }
-
-  /* アラート */
-  .alert {
-    border-radius: 10px; padding: 12px 16px;
-    font-size: 0.85rem; margin: 10px 0; line-height: 1.6;
-    display: flex; align-items: flex-start; gap: 10px;
-  }
-  .alert a { color: inherit; }
-  .alert-info    { background: rgba(91,138,245,.12); border: 1px solid rgba(91,138,245,.3); color: #8ab4f8; }
-  .alert-success { background: rgba(76,175,130,.12); border: 1px solid rgba(76,175,130,.3); color: var(--success); }
-  .alert-error   { background: rgba(240,98,146,.12); border: 1px solid rgba(240,98,146,.3); color: var(--error); }
-  .alert-warn    { background: rgba(255,183,77,.12);  border: 1px solid rgba(255,183,77,.3);  color: var(--warn); }
-
-  /* スピナー */
-  .spinner {
-    display: inline-block; width: 18px; height: 18px;
-    border: 2px solid rgba(255,255,255,.2);
-    border-top-color: #fff; border-radius: 50%;
-    animation: spin .6s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* フッター */
-  .footer { text-align: center; color: var(--text-sub); font-size: 0.75rem; margin-top: 40px; }
-
-  .hidden { display: none !important; }
-
-  @media (max-width: 520px) {
-    .header h1 { font-size: 1.3rem; }
-    .stat-box   { min-width: 90px; }
-  }
 </style>
-</head>
-<body>
-<div class="app">
 
-  <!-- ヘッダー -->
-  <div class="header">
-    <div class="logo">🗳️</div>
-    <h1>NFT Snapshot Voting</h1>
-    <p>NFT保有量に基づいた重み付き投票システム</p>
-  </div>
+<div class="nftv-card">
+  <h3>🗳️ NFT Voting</h3>
+  <button class="nftv-btn" onclick="nftv_connect()">ウォレット接続</button>
+  <div id="nftv-wallet"></div>
+</div>
 
-  <!-- ① ウォレット接続 -->
-  <div class="card" id="walletCard">
-    <div class="card-title">🦊 ウォレット接続</div>
-    <div class="wallet-section" id="connectSection">
-      <p style="color:var(--text-sub);margin-bottom:16px;font-size:.9rem;">MetaMaskなどのWeb3ウォレットで接続して、投票資格を確認します</p>
-      <button class="connect-btn" id="connectBtn" onclick="connectWallet()">
-        <span>🦊</span> ウォレットを接続する
-      </button>
-      <div id="connectAlert"></div>
-    </div>
-    <div class="wallet-info hidden" id="walletInfo">
-      <div class="wallet-addr">
-        <div class="wallet-dot"></div>
-        <span class="addr-text" id="walletAddr">-</span>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <span class="nft-badge" id="nftBadge">🎴 - NFT</span>
-        <button class="disconnect-btn" onclick="disconnectWallet()">切断</button>
-      </div>
-    </div>
-  </div>
+<div class="nftv-card" id="nftv-vote" style="display:none;">
+  <h4 id="nftv-title"></h4>
+  <div id="nftv-options"></div>
+  <button class="nftv-btn" id="nftv-submit" disabled onclick="nftv_vote()">投票する</button>
+  <div id="nftv-msg"></div>
+</div>
 
-  <!-- ② 投票セクション -->
-  <div class="card hidden" id="voteCard">
-    <div class="card-title">🗳️ 投票する</div>
-    <div id="voteContent">
-      <div class="alert alert-info">⏳ 投票情報を読み込み中...</div>
-    </div>
-  </div>
-
-  <!-- ③ 投票結果グラフ -->
-  <div class="card" id="resultsCard">
-    <div class="card-title">📊 投票結果</div>
-    <div class="vote-select-wrap">
-      <label style="font-size:.82rem;color:var(--text-sub);">表示する投票：</label>
-      <select class="vote-select" id="resultVoteSelect" onchange="loadResults(this.value)">
-        <option value="">読み込み中...</option>
-      </select>
-    </div>
-    <div id="resultsContent">
-      <div class="alert alert-info">⏳ 結果を読み込み中...</div>
-    </div>
-  </div>
-
-  <!-- ④ 投票ログ -->
-  <div class="card" id="logCard">
-    <div class="card-title">📋 投票ログ</div>
-    <div id="logContent">
-      <div class="alert alert-info">⏳ ログを読み込み中...</div>
-    </div>
-  </div>
-
-  <div class="footer">Powered by Google Apps Script &amp; MetaMask | NFT Snapshot Voting System</div>
 </div>
 
 <script>
-// ============================================================
-// Apps Script Web App URL（変更不要）
-// ============================================================
-const API_URL = 'https://script.google.com/macros/s/AKfycbxK_BRGerGBWpf_e25e-qr3h4BQVGUlUx50a-2ArHoNnWYBnONoF-CSvYwdXJ-JeTCGgg/exec';
+const NFTV_API = "https://script.google.com/macros/s/AKfycbxK_BRGerGBWpf_e25e-qr3h4BQVGUlUx50a-2ArHoNnWYBnONoF-CSvYwdXJ-JeTCGgg/exec";
 
-// ============================================================
-let currentWallet = null;
-let currentVoteId = null;
-let eligibility   = null;
-let allVotes      = [];
-let chartInstance = null;
-let selectedOption = null;
+let nftv_wallet = null;
+let nftv_voteId = null;
+let nftv_selected = null;
 
-const COLORS = [
-  '#7c6ff7','#5ee7df','#f9a825','#f06292',
-  '#66bb6a','#29b6f6','#ffa726','#ab47bc'
-];
-
-// ============================================================
-// ウォレット接続
-// ============================================================
-async function connectWallet() {
-  const btn = document.getElementById('connectBtn');
-  const alertEl = document.getElementById('connectAlert');
-  alertEl.innerHTML = '';
-
-  if (!window.ethereum) {
-    alertEl.innerHTML = `<div class="alert alert-error">⚠️ MetaMaskが見つかりません。<a href="https://metamask.io" target="_blank">インストール</a>してください。</div>`;
+async function nftv_connect(){
+  if(!window.ethereum){
+    nftv_alert("MetaMaskが必要です","error");
     return;
   }
+  const acc = await ethereum.request({method:"eth_requestAccounts"});
+  nftv_wallet = acc[0];
 
-  btn.disabled = true;
-  btn.innerHTML = `<span class="spinner"></span> 接続中...`;
+  document.getElementById("nftv-wallet").innerHTML =
+    "接続: "+ nftv_wallet.slice(0,6)+"...";
 
-  try {
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    currentWallet = accounts[0].toLowerCase();
-    showWalletConnected();
-    await loadActiveVote();
-  } catch (err) {
-    alertEl.innerHTML = `<div class="alert alert-error">❌ 接続キャンセルまたはエラー：${err.message}</div>`;
-    btn.disabled = false;
-    btn.innerHTML = `<span>🦊</span> ウォレットを接続する`;
-  }
+  nftv_loadVote();
 }
 
-function showWalletConnected() {
-  const short = currentWallet.slice(0,6) + '...' + currentWallet.slice(-4);
-  document.getElementById('connectSection').classList.add('hidden');
-  document.getElementById('walletInfo').classList.remove('hidden');
-  document.getElementById('walletAddr').textContent = short;
-}
+async function nftv_loadVote(){
+  const res = await fetch(NFTV_API+"?action=getActiveVote").then(r=>r.json());
+  if(!res.voteId) return;
 
-function disconnectWallet() {
-  currentWallet = null;
-  eligibility   = null;
-  currentVoteId = null;
-  selectedOption = null;
-  document.getElementById('connectSection').classList.remove('hidden');
-  document.getElementById('walletInfo').classList.add('hidden');
-  document.getElementById('nftBadge').textContent = '🎴 - NFT';
-  document.getElementById('connectBtn').disabled = false;
-  document.getElementById('connectBtn').innerHTML = `<span>🦊</span> ウォレットを接続する`;
-  document.getElementById('connectAlert').innerHTML = '';
-  document.getElementById('voteCard').classList.add('hidden');
-}
+  nftv_voteId = res.voteId;
+  document.getElementById("nftv-vote").style.display="block";
+  document.getElementById("nftv-title").innerText = res.title;
 
-if (window.ethereum) {
-  window.ethereum.on('accountsChanged', (accounts) => {
-    if (accounts.length === 0) disconnectWallet();
-    else { currentWallet = accounts[0].toLowerCase(); showWalletConnected(); loadActiveVote(); }
+  const box = document.getElementById("nftv-options");
+  box.innerHTML = "";
+
+  res.options.forEach(o=>{
+    const div = document.createElement("div");
+    div.className="nftv-option";
+    div.innerText=o;
+    div.onclick=()=>{
+      document.querySelectorAll(".nftv-option").forEach(e=>e.classList.remove("selected"));
+      div.classList.add("selected");
+      nftv_selected=o;
+      document.getElementById("nftv-submit").disabled=false;
+    };
+    box.appendChild(div);
   });
 }
 
-// ============================================================
-// アクティブな投票を読み込み
-// ============================================================
-async function loadActiveVote() {
-  const voteCard = document.getElementById('voteCard');
-  const content  = document.getElementById('voteContent');
-  voteCard.classList.remove('hidden');
-  content.innerHTML = `<div class="alert alert-info">⏳ 投票情報を確認中...</div>`;
+async function nftv_vote(){
+  if(!nftv_selected) return;
 
-  try {
-    const res = await apiFetch(`${API_URL}?action=getActiveVote`);
-
-    if (!res.voteId) {
-      content.innerHTML = `<div class="alert alert-warn">📭 現在アクティブな投票はありません</div>`;
-      voteCard.classList.add('hidden');
-      return;
-    }
-
-    currentVoteId = res.voteId;
-
-    const elig = await apiFetch(`${API_URL}?action=checkEligibility&voteId=${encodeURIComponent(res.voteId)}&wallet=${currentWallet}`);
-    eligibility = elig;
-
-    document.getElementById('nftBadge').textContent = elig.eligible ? `🎴 ${elig.nftCount} NFT` : `🎴 対象外`;
-
-    renderVoteUI(res, elig);
-
-  } catch (e) {
-    content.innerHTML = `<div class="alert alert-error">❌ 投票情報の取得に失敗しました：${e.message}</div>`;
-  }
-}
-
-function renderVoteUI(vote, elig) {
-  const now   = new Date();
-  const endAt = new Date(vote.endAt);
-  const diff  = endAt - now;
-  const days  = Math.floor(diff / 86400000);
-  const hours = Math.floor((diff % 86400000) / 3600000);
-  const timerText = diff > 0 ? `残り ${days}日 ${hours}時間` : '投票期間終了';
-
-  let html = `
-    <div class="vote-meta">
-      <div class="vote-title">${escHtml(vote.title)}</div>
-      <div class="vote-desc">${escHtml(vote.desc)}</div>
-      <div class="vote-timer">🕐 ${timerText}（${fmtDate(vote.endAt)} まで）</div>
-    </div>
-  `;
-
-  if (!elig.eligible) {
-    html += `<div class="alert alert-warn">⚠️ このウォレットはスナップショット対象外です。投票できません。</div>`;
-  } else if (elig.alreadyVoted) {
-    html += `<div class="alert alert-success">✅ このウォレットは既に投票済みです。</div>
-             <div class="voted-badge">✅ 投票完了 — NFT重み: ${elig.nftCount} 票</div>`;
-  } else if (diff <= 0) {
-    html += `<div class="alert alert-warn">⏰ 投票期間が終了しました</div>`;
-  } else {
-    html += `<div class="options-grid" id="optionsGrid">`;
-    vote.options.forEach(opt => {
-      html += `<button class="option-btn" onclick="selectOption(this,'${escHtml(opt)}')">${escHtml(opt)}</button>`;
-    });
-    html += `</div>
-      <button class="vote-btn" id="voteSubmitBtn" onclick="submitVote('${escHtml(vote.voteId)}')" disabled>
-        🗳️ この選択で投票する
-      </button>
-      <div id="voteAlert"></div>
-    `;
-  }
-
-  document.getElementById('voteContent').innerHTML = html;
-}
-
-function selectOption(el, opt) {
-  document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
-  el.classList.add('selected');
-  selectedOption = opt;
-  const btn = document.getElementById('voteSubmitBtn');
-  if (btn) btn.disabled = false;
-}
-
-// ============================================================
-// 投票送信
-// ============================================================
-async function submitVote(voteId) {
-  if (!selectedOption) return;
-
-  const submitBtn = document.getElementById('voteSubmitBtn');
-  const alertEl   = document.getElementById('voteAlert');
-  alertEl.innerHTML = '';
-
-  submitBtn.disabled = true;
-
-  try {
-    // ① サーバーからノンスを取得（10分の有効期限）
-    submitBtn.innerHTML = `<span class="spinner"></span> サーバーと通信中...`;
-    const nonceRes = await apiFetch(
-      `${API_URL}?action=getNonce&voteId=${encodeURIComponent(voteId)}&wallet=${currentWallet}&choice=${encodeURIComponent(selectedOption)}`
-    );
-    if (nonceRes.error) throw new Error(nonceRes.error);
-    const nonce = nonceRes.nonce;
-
-    // ② MetaMaskで署名するメッセージを構築（ノンス入り）
-    const message = [
-      `NFT投票システム`,
-      `VoteID: ${voteId}`,
-      `選択: ${selectedOption}`,
-      `ウォレット: ${currentWallet}`,
-      `ノンス: ${nonce}`,
-      `タイムスタンプ: ${new Date().toISOString()}`
-    ].join('\n');
-
-    // ③ ethers.js でハッシュを計算（サーバー側の ecrecover と同一の値）
-    const msgHash = ethers.utils.hashMessage(message);
-
-    // ④ MetaMaskで署名
-    submitBtn.innerHTML = `<span class="spinner"></span> MetaMaskで署名してください...`;
-    const signature = await window.ethereum.request({
-      method: 'personal_sign',
-      params : [message, currentWallet]
-    });
-
-    // ⑤ サーバーに送信（nonce + msgHash + signature）
-    submitBtn.innerHTML = `<span class="spinner"></span> 送信中...`;
-    const res = await apiPost({
-      action: 'submitVote',
-      voteId, wallet: currentWallet,
-      choice: selectedOption,
-      signature, msgHash, nonce
-    });
-
-    if (res.success) {
-      alertEl.innerHTML = `<div class="alert alert-success">✅ 投票が完了しました！（NFT重み: ${res.nftWeight}票）</div>`;
-      submitBtn.classList.add('hidden');
-      document.querySelectorAll('.option-btn').forEach(b => { b.disabled = true; });
-      setTimeout(() => { loadResults(voteId); loadVoteLog(voteId); }, 800);
-    } else {
-      throw new Error(res.error || '投票に失敗しました');
-    }
-  } catch (e) {
-    if (e.code === 4001) {
-      alertEl.innerHTML = `<div class="alert alert-warn">⚠️ 署名がキャンセルされました</div>`;
-    } else {
-      alertEl.innerHTML = `<div class="alert alert-error">❌ ${e.message}</div>`;
-    }
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = `🗳️ この選択で投票する`;
-  }
-}
-
-// ============================================================
-// 全投票一覧を読み込み
-// ============================================================
-async function loadAllVotes() {
-  const sel = document.getElementById('resultVoteSelect');
-  const resultsContent = document.getElementById('resultsContent');
-
-  try {
-    const res = await apiFetch(`${API_URL}?action=getAllVotes`);
-
-    if (res.error) {
-      sel.innerHTML = '<option>エラー</option>';
-      resultsContent.innerHTML = `<div class="alert alert-error">❌ APIエラー：${escHtml(res.error)}</div>`;
-      return;
-    }
-
-    allVotes = res.votes || [];
-
-    if (allVotes.length === 0) {
-      sel.innerHTML = '<option>投票データなし</option>';
-      resultsContent.innerHTML = `<div class="alert alert-warn">📭 投票データが見つかりません。スプレッドシートの「設定」タブを確認してください。<br><a href="${API_URL}?action=getAllVotes" target="_blank">🔗 APIを直接確認する</a></div>`;
-      return;
-    }
-
-    sel.innerHTML = allVotes.map(v =>
-      `<option value="${escHtml(v.voteId)}">${escHtml(v.voteId)} — ${escHtml(v.title)} [${escHtml(v.status)}]</option>`
-    ).join('');
-
-    const active = allVotes.find(v => v.status === 'active');
-    const first  = active || allVotes[allVotes.length - 1];
-    if (first) {
-      sel.value = first.voteId;
-      loadResults(first.voteId);
-      loadVoteLog(first.voteId);
-    }
-
-  } catch (e) {
-    console.error('投票一覧取得エラー', e);
-    sel.innerHTML = '<option>通信エラー</option>';
-    resultsContent.innerHTML = `<div class="alert alert-error">❌ 通信エラー：${escHtml(e.message)}<br><a href="${API_URL}?action=getAllVotes" target="_blank">🔗 APIを直接確認する</a></div>`;
-  }
-}
-
-// ============================================================
-// 投票結果を表示
-// ============================================================
-async function loadResults(voteId) {
-  if (!voteId) return;
-  const content = document.getElementById('resultsContent');
-  content.innerHTML = `<div class="alert alert-info">⏳ 結果を集計中...</div>`;
-
-  try {
-    const res = await apiFetch(`${API_URL}?action=getResults&voteId=${encodeURIComponent(voteId)}`);
-    if (res.error) throw new Error(res.error);
-
-    const totalW = res.totalWeight || 0;
-
-    let html = `
-      <div class="stat-row">
-        <div class="stat-box"><div class="stat-num">${res.totalVoters}</div><div class="stat-lbl">投票者数</div></div>
-        <div class="stat-box"><div class="stat-num">${totalW}</div><div class="stat-lbl">総票数（NFT重み）</div></div>
-        <div class="stat-box"><div class="stat-num">${res.participationRate}%</div><div class="stat-lbl">投票率</div></div>
-        <div class="stat-box"><div class="stat-num">${res.totalEligibleVoters}</div><div class="stat-lbl">対象ウォレット数</div></div>
-      </div>
-      <div class="chart-wrap"><canvas id="resultChart"></canvas></div>
-      <table class="results-table">
-        <thead><tr><th>選択肢</th><th>票数（NFT重み）</th><th>割合</th><th>バー</th></tr></thead>
-        <tbody>
-    `;
-
-    res.options.forEach((opt, i) => {
-      const t   = res.tally[opt] || { weight: 0, count: 0 };
-      const pct = totalW > 0 ? ((t.weight / totalW) * 100).toFixed(1) : '0.0';
-      html += `
-        <tr>
-          <td><strong>${escHtml(opt)}</strong></td>
-          <td>${t.weight}票（${t.count}人）</td>
-          <td class="pct">${pct}%</td>
-          <td><div class="bar-wrap">
-            <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${COLORS[i % COLORS.length]}"></div></div>
-          </div></td>
-        </tr>
-      `;
-    });
-
-    html += `</tbody></table>`;
-    content.innerHTML = html;
-
-    renderChart(res.options, res.tally, totalW);
-
-  } catch (e) {
-    content.innerHTML = `<div class="alert alert-error">❌ 結果取得エラー：${e.message}</div>`;
-  }
-}
-
-function renderChart(options, tally, totalW) {
-  const ctx = document.getElementById('resultChart');
-  if (!ctx) return;
-
-  const data   = options.map(o => (tally[o] || {}).weight || 0);
-  const labels = options.map((o, i) => {
-    const pct = totalW > 0 ? ((data[i] / totalW) * 100).toFixed(1) : '0.0';
-    return `${o} (${pct}%)`;
+  const message = "Vote:"+nftv_selected;
+  const sig = await ethereum.request({
+    method:"personal_sign",
+    params:[message,nftv_wallet]
   });
 
-  if (chartInstance) chartInstance.destroy();
+  const res = await fetch(NFTV_API,{
+    method:"POST",
+    body:JSON.stringify({
+      action:"submitVote",
+      voteId:nftv_voteId,
+      wallet:nftv_wallet,
+      choice:nftv_selected,
+      signature:sig
+    })
+  }).then(r=>r.json());
 
-  chartInstance = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels,
-      datasets: [{
-        data,
-        backgroundColor: COLORS.slice(0, options.length),
-        borderColor: '#161829',
-        borderWidth: 3,
-        hoverOffset: 8
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      cutout: '62%',
-      plugins: {
-        legend: { position: 'right', labels: { color: '#e8eaf6', font: { size: 12 }, padding: 14 } },
-        tooltip: {
-          callbacks: {
-            label: ctx => ` ${ctx.parsed} NFT票 (${totalW > 0 ? (ctx.parsed/totalW*100).toFixed(1) : 0}%)`
-          }
-        }
-      }
-    }
-  });
-}
-
-// ============================================================
-// 投票ログを表示
-// ============================================================
-async function loadVoteLog(voteId) {
-  if (!voteId) return;
-  const content = document.getElementById('logContent');
-
-  try {
-    const res = await apiFetch(`${API_URL}?action=getVoteLog&voteId=${encodeURIComponent(voteId)}`);
-    if (!res.logs || res.logs.length === 0) {
-      content.innerHTML = `<div class="alert alert-info">📋 まだ投票ログはありません</div>`;
-      return;
-    }
-
-    let html = `<div class="log-list">`;
-    [...res.logs].reverse().forEach(log => {
-      const short = (log.wallet || '').slice(0,6) + '...' + (log.wallet || '').slice(-4);
-      html += `
-        <div class="log-item">
-          <span class="log-wallet">🦊 ${short}</span>
-          <span class="log-choice">▶ ${escHtml(log.choice)}</span>
-          <span class="log-weight">🎴 ${log.nftWeight} NFT</span>
-          <span class="log-time">🕐 ${fmtDate(log.timestamp)}</span>
-        </div>
-      `;
-    });
-    html += `</div>`;
-    content.innerHTML = html;
-
-  } catch (e) {
-    content.innerHTML = `<div class="alert alert-error">❌ ${e.message}</div>`;
+  if(res.success){
+    nftv_alert("投票完了","success");
+  }else{
+    nftv_alert("失敗: "+res.error,"error");
   }
 }
 
-// ============================================================
-// ユーティリティ
-// ============================================================
-async function apiFetch(url) {
-  const res = await fetch(url, { redirect: 'follow' });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+function nftv_alert(msg,type){
+  document.getElementById("nftv-msg").innerHTML =
+    '<div class="nftv-alert '+type+'">'+msg+'</div>';
 }
-
-async function apiPost(body) {
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    body  : JSON.stringify(body),
-    headers: { 'Content-Type': 'application/json' },
-    redirect: 'follow'
-  });
-  return res.json();
-}
-
-function fmtDate(iso) {
-  if (!iso) return '-';
-  return new Date(iso).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
-}
-
-function escHtml(s) {
-  return String(s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// ============================================================
-// 初期ロード
-// ============================================================
-window.addEventListener('DOMContentLoaded', () => {
-  loadAllVotes();
-});
 </script>
-</body>
-</html>

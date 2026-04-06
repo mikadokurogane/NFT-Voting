@@ -1,168 +1,181 @@
 <div class="nftv-app">
 <style>
 .nftv-app {
-  --bg: #0d0f1a;
-  --surface: #161829;
-  --surface2: #1e2138;
-  --border: rgba(255,255,255,0.08);
-  --accent: #7c6ff7;
-  --accent2: #5ee7df;
-  --text: #e8eaf6;
-  --text-sub: #8891bb;
-  --success: #4caf82;
-  --error: #f06292;
-  --warn: #ffb74d;
+  --bg:#0d0f1a;
+  --surface:#161829;
+  --surface2:#1e2138;
+  --border:rgba(255,255,255,0.08);
+  --accent:#7c6ff7;
+  --accent2:#5ee7df;
+  --text:#e8eaf6;
+  --text-sub:#8891bb;
+  --success:#4caf82;
+  --error:#f06292;
+  --warn:#ffb74d;
 
-  font-family: 'Inter','Noto Sans JP',sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  padding: 24px 16px 60px;
-  border-radius: 12px;
+  font-family:'Inter','Noto Sans JP',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  padding:24px 16px 60px;
+  border-radius:12px;
+  max-width:780px;
+  margin:auto;
 }
 
-.nftv-app * {
-  box-sizing: border-box;
+.nftv-app *{box-sizing:border-box;}
+
+.nftv-header{text-align:center;padding:20px 0;}
+.nftv-logo{
+  width:56px;height:56px;border-radius:16px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;margin:0 auto 10px;
 }
 
-.nftv-app .nftv-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 20px;
-  margin-bottom: 16px;
+.nftv-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:20px;
+  margin-bottom:16px;
 }
 
-.nftv-app .nftv-btn {
-  background: linear-gradient(135deg, var(--accent), #5b8af5);
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  padding: 12px 20px;
-  cursor: pointer;
-  font-weight: bold;
+.nftv-btn{
+  background:linear-gradient(135deg,var(--accent),#5b8af5);
+  border:none;color:#fff;
+  border-radius:10px;
+  padding:12px 20px;
+  cursor:pointer;
 }
 
-.nftv-app .nftv-btn:disabled {
-  opacity: .4;
+.nftv-option{
+  background:var(--surface2);
+  border:1px solid var(--border);
+  padding:12px;border-radius:10px;
+  margin-bottom:8px;
+  cursor:pointer;
 }
 
-.nftv-app .nftv-option {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px;
-  margin-bottom: 8px;
-  cursor: pointer;
+.nftv-option.selected{
+  border-color:var(--accent);
+  background:rgba(124,111,247,.2);
 }
 
-.nftv-app .nftv-option.selected {
-  border-color: var(--accent);
-  background: rgba(124,111,247,.2);
-}
+.nftv-hidden{display:none;}
 
-.nftv-app .nftv-alert {
-  padding: 10px;
-  border-radius: 8px;
-  margin-top: 10px;
-  font-size: 0.9rem;
-}
-
-.nftv-app .info { background: rgba(91,138,245,.12); }
-.nftv-app .error { background: rgba(240,98,146,.12); }
-.nftv-app .success { background: rgba(76,175,130,.12); }
-
+.nftv-alert{padding:10px;border-radius:8px;margin-top:10px;}
+.nftv-info{background:rgba(91,138,245,.12);}
+.nftv-error{background:rgba(240,98,146,.12);}
+.nftv-success{background:rgba(76,175,130,.12);}
 </style>
 
+<div class="nftv-header">
+  <div class="nftv-logo">🗳️</div>
+  <h2>NFT Voting</h2>
+</div>
+
 <div class="nftv-card">
-  <h3>🗳️ NFT Voting</h3>
   <button class="nftv-btn" onclick="nftv_connect()">ウォレット接続</button>
   <div id="nftv-wallet"></div>
 </div>
 
-<div class="nftv-card" id="nftv-vote" style="display:none;">
-  <h4 id="nftv-title"></h4>
+<div class="nftv-card nftv-hidden" id="nftv-vote">
+  <h3 id="nftv-title"></h3>
   <div id="nftv-options"></div>
-  <button class="nftv-btn" id="nftv-submit" disabled onclick="nftv_vote()">投票する</button>
+  <button class="nftv-btn" id="nftv-submit" disabled onclick="nftv_vote()">投票</button>
   <div id="nftv-msg"></div>
 </div>
 
+<div class="nftv-card">
+  <h3>📊 結果</h3>
+  <canvas id="nftv-chart" height="200"></canvas>
 </div>
 
-<script>
-const NFTV_API = "https://script.google.com/macros/s/AKfycbxK_BRGerGBWpf_e25e-qr3h4BQVGUlUx50a-2ArHoNnWYBnONoF-CSvYwdXJ-JeTCGgg/exec";
+</div>
 
-let nftv_wallet = null;
-let nftv_voteId = null;
-let nftv_selected = null;
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.ethers.io/lib/ethers-5.7.umd.min.js"></script>
+
+<script>
+const API="https://script.google.com/macros/s/AKfycbxK_BRGerGBWpf_e25e-qr3h4BQVGUlUx50a-2ArHoNnWYBnONoF-CSvYwdXJ-JeTCGgg/exec";
+
+let wallet=null,voteId=null,selected=null,chart=null;
 
 async function nftv_connect(){
-  if(!window.ethereum){
-    nftv_alert("MetaMaskが必要です","error");
-    return;
-  }
-  const acc = await ethereum.request({method:"eth_requestAccounts"});
-  nftv_wallet = acc[0];
-
-  document.getElementById("nftv-wallet").innerHTML =
-    "接続: "+ nftv_wallet.slice(0,6)+"...";
-
-  nftv_loadVote();
+ if(!window.ethereum){alert("MetaMask必要");return;}
+ const acc=await ethereum.request({method:"eth_requestAccounts"});
+ wallet=acc[0];
+ document.getElementById("nftv-wallet").innerText=wallet.slice(0,6)+"...";
+ loadVote();
 }
 
-async function nftv_loadVote(){
-  const res = await fetch(NFTV_API+"?action=getActiveVote").then(r=>r.json());
-  if(!res.voteId) return;
+async function loadVote(){
+ const v=await fetch(API+"?action=getActiveVote").then(r=>r.json());
+ if(!v.voteId)return;
 
-  nftv_voteId = res.voteId;
-  document.getElementById("nftv-vote").style.display="block";
-  document.getElementById("nftv-title").innerText = res.title;
+ voteId=v.voteId;
+ document.getElementById("nftv-vote").classList.remove("nftv-hidden");
+ document.getElementById("nftv-title").innerText=v.title;
 
-  const box = document.getElementById("nftv-options");
-  box.innerHTML = "";
+ const box=document.getElementById("nftv-options");
+ box.innerHTML="";
 
-  res.options.forEach(o=>{
-    const div = document.createElement("div");
-    div.className="nftv-option";
-    div.innerText=o;
-    div.onclick=()=>{
-      document.querySelectorAll(".nftv-option").forEach(e=>e.classList.remove("selected"));
-      div.classList.add("selected");
-      nftv_selected=o;
-      document.getElementById("nftv-submit").disabled=false;
-    };
-    box.appendChild(div);
-  });
+ v.options.forEach(o=>{
+  const d=document.createElement("div");
+  d.className="nftv-option";
+  d.innerText=o;
+  d.onclick=()=>{
+    document.querySelectorAll(".nftv-option").forEach(e=>e.classList.remove("selected"));
+    d.classList.add("selected");
+    selected=o;
+    document.getElementById("nftv-submit").disabled=false;
+  };
+  box.appendChild(d);
+ });
+
+ loadResults();
 }
 
 async function nftv_vote(){
-  if(!nftv_selected) return;
+ if(!selected)return;
 
-  const message = "Vote:"+nftv_selected;
-  const sig = await ethereum.request({
-    method:"personal_sign",
-    params:[message,nftv_wallet]
-  });
+ const sig=await ethereum.request({
+  method:"personal_sign",
+  params:["Vote:"+selected,wallet]
+ });
 
-  const res = await fetch(NFTV_API,{
-    method:"POST",
-    body:JSON.stringify({
-      action:"submitVote",
-      voteId:nftv_voteId,
-      wallet:nftv_wallet,
-      choice:nftv_selected,
-      signature:sig
-    })
-  }).then(r=>r.json());
+ const r=await fetch(API,{
+  method:"POST",
+  body:JSON.stringify({action:"submitVote",voteId,wallet,choice:selected,signature:sig})
+ }).then(r=>r.json());
 
-  if(res.success){
-    nftv_alert("投票完了","success");
-  }else{
-    nftv_alert("失敗: "+res.error,"error");
-  }
+ if(r.success){
+  msg("投票完了","success");
+  loadResults();
+ }else{
+  msg("失敗:"+r.error,"error");
+ }
 }
 
-function nftv_alert(msg,type){
-  document.getElementById("nftv-msg").innerHTML =
-    '<div class="nftv-alert '+type+'">'+msg+'</div>';
+async function loadResults(){
+ const r=await fetch(API+"?action=getResults&voteId="+voteId).then(r=>r.json());
+ if(!r.options)return;
+
+ const data=r.options.map(o=>r.tally[o]?.weight||0);
+
+ if(chart)chart.destroy();
+
+ chart=new Chart(document.getElementById("nftv-chart"),{
+  type:"doughnut",
+  data:{
+    labels:r.options,
+    datasets:[{data}]
+  }
+ });
+}
+
+function msg(t,type){
+ document.getElementById("nftv-msg").innerHTML=
+ `<div class="nftv-alert nftv-${type}">${t}</div>`;
 }
 </script>
